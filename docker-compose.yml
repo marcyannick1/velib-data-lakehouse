@@ -33,6 +33,11 @@ services:
     ports:
       - "3000:3000"
 
+  ingestion:
+    build: ./ingestion
+    env_file:
+      - .env
+
 
 volumes:
 
