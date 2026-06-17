@@ -3,12 +3,20 @@ import pandas as pd
 
 def build_station_dimension(df):
 
+    df = df.rename(
+        columns={
+            "stationCode": "station_code",
+            "lat": "latitude",
+            "lon": "longitude"
+        }
+    )
+
     columns = [
         "station_id",
-        "stationCode",
+        "station_code",
         "name",
-        "lat",
-        "lon",
+        "latitude",
+        "longitude",
         "capacity"
     ]
 

@@ -1,5 +1,4 @@
 services:
-
   postgres:
     image: postgres:16
     container_name: velib-postgres
@@ -11,7 +10,23 @@ services:
       - "5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U velib_user -d velib"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: velib-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   minio:
     image: minio/minio
@@ -26,20 +41,93 @@ services:
     volumes:
       - minio_data:/data
 
-
   metabase:
     image: metabase/metabase
     container_name: velib-metabase
     ports:
       - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
-  ingestion:
-    build: ./ingestion
-    env_file:
-      - .env
+  airflow-postgres:
+    image: postgres:16
+    container_name: airflow-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    ports:
+      - "5433:5432"
+    volumes:
+      - airflow_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
+  airflow-init:
+    build:
+      context: ./airflow
+    container_name: airflow-init
+    environment:
+      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres:5432/airflow
+      AIRFLOW__CORE__FERNET_KEY: ''
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__WEBSERVER__SECRET_KEY: velib-airflow-secret
+    depends_on:
+      airflow-postgres:
+        condition: service_healthy
+    command: bash -c "airflow db migrate && airflow users create --username admin --password admin --firstname Admin --lastname Admin --role Admin --email admin@admin.com"
+    restart: on-failure
+
+  airflow-webserver:
+    build:
+      context: ./airflow
+    container_name: airflow-webserver
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    environment:
+      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres:5432/airflow
+      AIRFLOW__CORE__FERNET_KEY: ''
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__WEBSERVER__SECRET_KEY: velib-airflow-secret
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/opt/project
+      - ./airflow/dags:/opt/airflow/dags
+      - airflow_logs:/opt/airflow/logs
+    command: airflow webserver
+    restart: unless-stopped
+
+  airflow-scheduler:
+    build:
+      context: ./airflow
+    container_name: airflow-scheduler
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    environment:
+      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres:5432/airflow
+      AIRFLOW__CORE__FERNET_KEY: ''
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__WEBSERVER__SECRET_KEY: velib-airflow-secret
+    volumes:
+      - .:/opt/project
+      - ./airflow/dags:/opt/airflow/dags
+      - airflow_logs:/opt/airflow/logs
+    command: airflow scheduler
+    restart: unless-stopped
 
 volumes:
-
   postgres_data:
   minio_data:
+  airflow_db:
+  airflow_logs:
