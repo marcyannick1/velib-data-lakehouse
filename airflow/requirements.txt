@@ -5,3 +5,4 @@ SQLAlchemy<2.0
 psycopg2-binary
 requests
 python-dotenv
+python-telegram-bot==21.4

@@ -1,5 +1,6 @@
 import sys
 import os
+from telegram_sender import send_message
 
 sys.path.append(
     "/opt/project"
@@ -39,12 +40,14 @@ def get_station_alerts():
 def generate_message(alerts):
 
     if not alerts:
-
         return "✅ Toutes les stations sont normales"
 
 
+    alerts = alerts[:20]
+
+
     message = (
-        f"🚨 {len(alerts)} station(s) critique(s)\n\n"
+        f"🚨 {len(alerts)} alertes affichées\n\n"
     )
 
 
@@ -66,6 +69,15 @@ if __name__ == "__main__":
 
     alerts = get_station_alerts()
 
-    message = generate_message(alerts)
+
+    message = generate_message(
+        alerts
+    )
+
 
     print(message)
+
+
+    send_message(
+        message
+    )
