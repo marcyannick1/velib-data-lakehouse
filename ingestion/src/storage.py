@@ -1,6 +1,8 @@
 import json
 from datetime import datetime
 import tempfile
+import pandas as pd
+from io import BytesIO
 
 from minio_client import client
 from config import BUCKET_NAME
@@ -127,3 +129,19 @@ def upload_dataframe_parquet(
         )
 
     return object_name
+
+
+def read_parquet_object(object_name):
+
+    response = client.get_object(
+        BUCKET_NAME,
+        object_name
+    )
+
+    data = response.read()
+
+    df = pd.read_parquet(
+        BytesIO(data)
+    )
+
+    return df
