@@ -24,7 +24,7 @@ with DAG(
         task_id="ingestion",
 
         bash_command="""
-        cd /opt/project/ingestion/src &&
+        cd /opt/project/ingestion &&
         python main.py
         """
     )

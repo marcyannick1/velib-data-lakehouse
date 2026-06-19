@@ -11,7 +11,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U velib_user -d velib"]
+      test: [ "CMD-SHELL", "pg_isready -U velib_user -d velib" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -63,7 +63,7 @@ services:
     volumes:
       - airflow_db:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "airflow"]
+      test: [ "CMD", "pg_isready", "-U", "airflow" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -129,6 +129,13 @@ services:
       - airflow_logs:/opt/airflow/logs
     command: airflow scheduler
     restart: unless-stopped
+
+  telegram_bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.telegram
+    env_file:
+      - .env
 
 volumes:
   postgres_data:
